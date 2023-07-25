@@ -33,48 +33,53 @@ from .helper.listeners.aria2_listener import start_aria2_listener
 from .helper.themes import BotTheme
 from .modules import authorize, clone, gd_count, gd_delete, gd_list, cancel_mirror, mirror_leech, status, torrent_search, torrent_select, ytdlp, rss, shell, eval, users_settings, bot_settings, speedtest, save_msg, images, anilist, mediainfo, mydramalist, broadcast, gen_pyro_sess, gd_clean
 
-@new_thread
-async def stats(_, message):
+@new_task
+async def stats(client, message):
+    if await aiopath.exists('.git'):
+        last_commit = (await cmd_exec("git log -1 --pretty='%cd ( %cr )' --date=format-local:'%d/%m/%Y'", True))[0]
+        changelog = (await cmd_exec("git log -1 --pretty=format:'<code>%s</code> <b>By</b> %an'", True))[0]
+    else:
+        last_commit = 'No Data'
+        changelog = 'N/A'
     total, used, free, disk = disk_usage('/')
+    swap = swap_memory()
     memory = virtual_memory()
-    currentTime = get_readable_time(time() - botStartTime)
-    osUptime = get_readable_time(time() - boot_time())
     cpuUsage = cpu_percent(interval=0.5)
-    quote = Quote.print().split('―', 1)[0].strip().replace("“", "").replace("”", "")
-    limit_mapping = {
-        'Torrent': config_dict.get('TORRENT_LIMIT', '∞'),
-        'Gdrive': config_dict.get('GDRIVE_LIMIT', '∞'),
-        'Ytdlp': config_dict.get('YTDLP_LIMIT', '∞'),
-        'Direct': config_dict.get('DIRECT_LIMIT', '∞'),
-        'Leech': config_dict.get('LEECH_LIMIT', '∞'),
-        'Clone': config_dict.get('CLONE_LIMIT', '∞'),
-        'Mega': config_dict.get('MEGA_LIMIT', '∞'),
-        'User tasks': config_dict.get('USER_MAX_TASKS', '∞'),
-    }
-    system_info = f'<b>{quote}</b>\n\n'\
-            f'<code>• Bot uptime :</code> {currentTime}\n'\
-            f'<code>• Sys uptime :</code> {osUptime}\n'\
-            f'<code>• CPU usage  :</code> {cpuUsage}%\n'\
-            f'<code>• RAM usage  :</code> {memory.percent}%\n'\
-            f'<code>• Disk usage :</code> {disk}%\n'\
-            f'<code>• Disk space :</code> {get_readable_file_size(free)}/{get_readable_file_size(total)}\n\n'
-            
-    limitations = f'<b>LIMITATIONS</b>\n\n'
+    stats = BotTheme('STATS',
+                     last_commit=last_commit,
+                     bot_version=get_version(),
+                     commit_details=changelog,
+                     bot_uptime=get_readable_time(time() - botStartTime),
+                     os_uptime=get_readable_time(time() - boot_time()),
+                     os_arch=f"{platform.system()}, {platform.release()}, {platform.machine()}",
+                     cpu=cpuUsage,
+                     cpu_bar=get_progress_bar_string(cpuUsage),
+                     cpu_freq=f"{cpu_freq(percpu=False).current / 1000:.2f} GHz" if cpu_freq() else "Access Denied",
+                     p_core=cpu_count(logical=False),
+                     v_core=cpu_count(logical=True) - cpu_count(logical=False),
+                     total_core=cpu_count(logical=True),
+                     ram_bar=get_progress_bar_string(memory.percent),
+                     ram=memory.percent,
+                     ram_u=get_readable_file_size(memory.used),
+                     ram_f=get_readable_file_size(memory.available),
+                     ram_t=get_readable_file_size(memory.total),
+                     swap_bar=get_progress_bar_string(swap.percent),
+                     swap=swap.percent,
+                     swap_u=get_readable_file_size(swap.used),
+                     swap_f=get_readable_file_size(swap.free),
+                     swap_t=get_readable_file_size(swap.total),
+                     disk=disk,
+                     disk_bar=get_progress_bar_string(disk),
+                     disk_t=get_readable_file_size(total),
+                     disk_u=get_readable_file_size(used),
+                     disk_f=get_readable_file_size(free),
+                     up_data=get_readable_file_size(
+                         net_io_counters().bytes_sent),
+                     dl_data=get_readable_file_size(
+                         net_io_counters().bytes_recv)
+                     )
+    await sendMessage(message, stats, photo='IMAGES')
     
-    for k, v in limit_mapping.items():
-        if v == '':
-            v = '∞'
-        elif k != 'User tasks':
-            v = f'{v}GB/Link'
-        else:
-            v = f'{v} Tasks/user'
-        limitations += f'<code>• {k:<11}:</code> {v}\n'
-
-    stats = system_info + limitations
-    reply_message = await sendMessage(message, stats, photo='IMAGES')
-    await deleteMessage(message)
-    await one_minute_del(reply_message)
-
 @new_thread
 async def start(client, message):
     buttons = ButtonMaker()
