@@ -48,6 +48,7 @@ async def stats(client, message):
     stats = BotTheme('STATS',
                      last_commit=last_commit,
                      commit_details=changelog,
+                     bot_version=get_version(),
                      bot_uptime=get_readable_time(time() - botStartTime),
                      os_uptime=get_readable_time(time() - boot_time()),
                      os_arch=f"{platform.system()}, {platform.release()}, {platform.machine()}",
