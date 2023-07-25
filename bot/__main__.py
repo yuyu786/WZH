@@ -47,7 +47,6 @@ async def stats(client, message):
     cpuUsage = cpu_percent(interval=0.5)
     stats = BotTheme('STATS',
                      last_commit=last_commit,
-                     bot_version=get_version(),
                      commit_details=changelog,
                      bot_uptime=get_readable_time(time() - botStartTime),
                      os_uptime=get_readable_time(time() - boot_time()),
